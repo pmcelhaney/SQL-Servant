@@ -197,14 +197,14 @@ column2 = "B"
 			},
 
 			insertStatement: function () {
-				return addTerminator("INSERT " + tableName + '(' + allColumnNames().join(', ') + ')\nVALUES (' + allColumnValues().join(', ')+ ')');
+				return addTerminator('INSERT INTO ' + tableName + '(' + allColumnNames().join(', ') + ')\nVALUES (' + allColumnValues().join(', ')+ ')');
 			},
 			mergeStatement: function () {
 				var lines = [];
 				lines.push('MERGE INTO ' + tableName + ' A USING');
 				lines.push('SELECT (');
-				lines.push(listOfPairs(columnNames, columnValues, ' AS ' , ',\n'));
-				lines.push(')');
+				lines.push(listOfPairs(allColumnNames(), allColumnValues(), ' AS ' , ',\n'));
+				lines.push('FROM DUAL) B');
 				lines.push('ON (' + listOfPairs(prefixAll(keyColumnNames, 'A.'), prefixAll(keyColumnNames, 'B.'), ' = ', ' AND ') + ')');
 
 				lines.push('WHEN NOT MATCHED THEN');
