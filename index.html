@@ -222,15 +222,6 @@ column2 = "B"
 
 	};
 
-	var s = SqlServant();
-	s.setTableName('Foo');
-	s.addColumn('firstname', "'John'");
-	s.addColumn('lastname', "'Smith'");
-	s.addKeyColumn('userid', '1');
-
-
-	//console.log(s.updateStatement());
-
 
 	var parse = function () {
 		var s = SqlServant();
