@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 	<title>SQL Servant</title>
@@ -71,9 +72,12 @@
 table_name
 key1 = 1
 key2 = '2'
----
+--
 column1 = 'A'
 column2 = 'B'
+--
+optional = 'default value'
+dontUpdate = 'if it already exists'
 </textarea>
 
 
@@ -84,14 +88,13 @@ column2 = 'B'
 </fieldset>
 
 <fieldset>
-	<legend>Update</legend>
-	<textarea id="update-code"></textarea>
-</fieldset>
-
-
-<fieldset>
 	<legend>Insert</legend>
 	<textarea id="insert-code"></textarea>
+</fieldset>
+
+<fieldset>
+	<legend>Update</legend>
+	<textarea id="update-code"></textarea>
 </fieldset>
 
 <fieldset>
@@ -129,6 +132,8 @@ column2 = 'B'
 		var keyColumnValues = [];
 		var columnNames = [];
 		var columnValues = [];
+		var optionalColumnNames = [];
+		var optionalColumnValues = [];
 
 		var trim = function (s) {
 			return s.replace(/^\s+|\s+$/g, '');
@@ -148,11 +153,11 @@ column2 = 'B'
 		}
 
 		var allColumnNames = function () {
-			return keyColumnNames.concat(columnNames);
+			return keyColumnNames.concat(columnNames, optionalColumnNames);
 		};
 
 		var allColumnValues = function () {
-			return keyColumnValues.concat(columnValues);
+			return keyColumnValues.concat(columnValues, optionalColumnValues);
 		};
 
 		var prefixAll = function (obj, prefix) {
@@ -178,8 +183,14 @@ column2 = 'B'
 				columnValues.push(trim(v));
 			},
 
+			addOptionalColumn: function (k, v) {
+				optionalColumnNames.push(trim(k));
+				optionalColumnValues.push(trim(v));
+			},
+
 			updateStatement: function () {
 				var lines = [];
+				if (!columnNames.length) return '/* nothing to update */';
 				lines.push('UPDATE ' + tableName);
 				lines.push('SET');
 				lines.push(equalsPairList(columnNames, columnValues, ',\n'));
@@ -190,7 +201,7 @@ column2 = 'B'
 
 			deleteStatement: function () {
 				var lines = [];
-				lines.push('DELETE ' + tableName);
+				lines.push('DELETE FROM ' + tableName);
 				lines.push('WHERE');
 				lines.push(equalsPairList(keyColumnNames, keyColumnValues, ' AND\n'));
 				return addTerminator(lines.join('\n'));
@@ -202,20 +213,22 @@ column2 = 'B'
 			mergeStatement: function () {
 				var lines = [];
 				lines.push('MERGE INTO ' + tableName + ' A USING');
-				lines.push('SELECT (');
-				lines.push(listOfPairs(allColumnNames(), allColumnValues(), ' AS ' , ',\n'));
+				lines.push('(SELECT ');
+				lines.push(listOfPairs(allColumnValues(), allColumnNames(), ' AS ' , ',\n'));
 				lines.push('FROM DUAL) B');
 				lines.push('ON (' + listOfPairs(prefixAll(keyColumnNames, 'A.'), prefixAll(keyColumnNames, 'B.'), ' = ', ' AND ') + ')');
 
 				lines.push('WHEN NOT MATCHED THEN');
-				lines.push('INSERT ' + tableName + '(' + allColumnNames().join(', ') + ')');
+				lines.push('INSERT (' + allColumnNames().join(', ') + ')');
 				lines.push('VALUES (' + prefixAll(allColumnNames(), 'B.').join(', ') + ')');
 
-				lines.push('WHEN MATCHED THEN');
-				lines.push('UPDATE SET');
-				lines.push(equalsPairList(prefixAll(columnNames, 'A.'), prefixAll(columnNames, 'B.'), ',\n'));
+				if(columnNames.length) {
+					lines.push('WHEN MATCHED THEN');
+					lines.push('UPDATE SET');
+					lines.push(equalsPairList(prefixAll(columnNames, 'A.'), prefixAll(columnNames, 'B.'), ',\n'));
+				}
 				return addTerminator(lines.join('\n'));
-			},
+			}
 
 
 		}
@@ -232,7 +245,7 @@ column2 = 'B'
 		var method = 'addKeyColumn'
 		for (var i = 1; i < inputLines.length; i++) {
 			if (inputLines[i].substring(0,1) === '-') {
-				method = 'addColumn';
+				method = (method === 'addKeyColumn') ? 'addColumn' : 'addOptionalColumn';
 			}
 			var pair = inputLines[i].split('=');
 			if (pair[0] && pair[1]) {
@@ -247,7 +260,9 @@ column2 = 'B'
 	}
 
 
-
+	if(!document.addEventListener) {
+		alert('Sorry, this browser\'s not supported. Use a modern browser (IE9+, Firefox, Chrome).')
+	}
 
 	document.getElementById('input').addEventListener('keyup', parse);
 	parse();
